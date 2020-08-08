@@ -1,0 +1,204 @@
+# Why RISC-V Is Not Nearly Boring Enough
+
+[%hardbreaks]
+Al Stone <ahs3@redhat.com>
+Linux Plumbers Conference, RISC-V Minifconference
+24 August 2020
+
+[%hardbreaks]
+(C) 2020, Al Stone <ahs3@redhat.com>
+
+This work is licensed under the Creative Commons Attribution 4.0
+International License (CC-BY 4.0).  The full license text is available at:
+https://creativecommons.org/licenses/by/4.0/.
+
+## Abstract
+When RISC-V grows up, it wants to be a wildly successful
+computing platform.  Being an ISA is fun but being the world's
+fastest supercomputer would be really cool.
+
+So how do we get there?  By being dead boring.  If I have an operating
+system to install on a platform built around the RISC-V ISA, the install
+*_MUST_* work out of the box -- no mucking about with strange boot loaders,
+or grabbing odd bits of firmware and kernel patches.  To do that means
+standardizing what a RISC-V platform looks like so that an OEM knows
+exactly what must be built, and so that an operating system knows what
+exactly what hardware and firmware it will find.
+
+And let's just say that right now, the RISC-V Platform Specification has
+a long way to go to.  An OEM can only guess at what needs to
+be built; an OS can only run by using a lot of fiddly bits.  These
+are some of my thoughts on what needs to be done:
+
+. A clear vision
+. A clear process
+. A clear -- and complete -- specification
+
+We'll even talk about some suggestions for getting these things done.
+
+## Agenda
+* So what about the Vision Thing?
+* Getting things done
+* Filling in all the blanks
+** What do we have?
+** An outline for what we need
+* More Discussion
+
+## The Vision Thing
+* Unix-class platform specification
+** First thought: _too_ boring:
+*** What about the  various BSDs, RTOSs, and, yes, even Windows?
+*** Suggestion: make it an OS Platform Spec
+** Second thought: what's the goal?
+*** Set expectations for OSs: processor, devices, and firmware
+* Operating System Platform Spec
+** Clearly identify RISC-V ISA in use, and what to do when something
+is missing
+** Clearly define IO: required buses, required devices
+** Detailed specification of the interface between OS and firmware
+*** and between OS and hardware _via_ firmware
+*** and so that virtualization is possible
+
+## Getting things done
+* We have github: https://github.com/riscv/riscv-platform-specs
+* Current process is: discuss _ad infinitum_ on mailing list?
+* Let's make this simple:
+.. RFC on the mailing list
+.. On reasonable consensus, submit github merge request
+.. Commits must have SoB
+.. MR multiple approvals?  Voting?
+.. Who has final authority to merge?
+* Versioning?
+
+## Filling in all the blanks
+### What We Have
+What follows is the sum total of the content currently in the platform
+specification.
+
+* Can you build an SBC, or a laptop, or a server to be used
+with a general purpose OS with this list of requirements?
+* Can you modify an operating system -- Linux or that other one -- that
+will reliably boot on any platform meeting these requirements?
+
+#### User-Level Platform
+
+* User-mode environments must implement at least version 2.2 of the RISC-V User
+  ISA specification, which can be found at
+  https://github.com/riscv/riscv-isa-manual/blob/master/release/riscv-spec-v2.2.pdf.  
+* User-mode programs may not execute the `fence.i` instruction.
+* User-mode environments may provide additional ISA extensions, but if those
+  extensions add user-visible state they must be initially disabled.
+* Within main-memory regions, aligned instruction fetch must be atomic, up to
+  the smaller of ILEN and XLEN bits.  In particular, if an aligned 4-byte word
+  is stored with the `sw` instruction, then any processor attempts to execute
+  that word, the processor either fetches the newly stored word, or some previous
+  value stored to that location.  (That is, the fetched instruction is not an
+  unpredictable value, nor is it a hybrid of the bytes of the old and new
+  values.)
+
+#### Supervisor-Level Platform
+
+* Supervisor-mode environments must implement at least version 0.2.0 of the
+  RISC-V SBI specification, which can be found at
+  https://github.com/riscv/riscv-sbi-doc/blob/v0.2.0/riscv-sbi.adoc
+* Supervisor-mode environments must implement the Sv39 page-based
+  virtual-memory scheme.   Systems that support Sv48 must support Sv39, systems
+  that support Sv57 must support Sv48, and so forth.
+* Unless otherwise specified by a given I/O device, I/O regions are at least
+  point-to-point strongly ordered.  All devices attached to a given PCIe root
+  complex are on the same ordered channel (numbered 2 or above), though
+  different root complexes might not be on the same ordering channel.
+* On RV64I-based Unix-class systems the negative virtual addresses are reserved
+  for the kernel.
+* External devices (DMA engines, the debug unit, non RISC-V cores, etc) that
+  are visible to RISC-V harts must appear as coherent agents, just like any
+  RISC-V hart would.  If additional ordering constraints are necessary for a
+  device to function, those will be provide by a device-specific mechanism.
+
+#### Portable UNIX Platform Profile
+
+* Supervisor-mode environments must implement RV64GC.
+
+### What We Need
+#### Outlining What We Need
+
+* Fair warning:
+** Much of the mailing list discussion seems to be detailed only
+** The author tends to think from the general to the detailed
+** And he has a lot to do:
+*** Catch up on the mailing list
+*** Pull in Atish's suggestions
+
+#### Outlining What We Need: Overall Structure
+
+* Hardware: CPU, memory, IO devices and buses
+* Monitor: TEE, Hardware Initialization and Run-Time Support
+* Boot Sequence: hardware->firmware->boot loader->kernel -- the protocols
+* Kernel: device enumeration and management
+* Profiles: the specific subsets of the above
+
+### Outlining What We Need: Hardware
+
+* Hardware
+** CPU
+*** Required ISA Components
+*** Privilege Levels and their Usage
+*** Identification: make, model, modules available, topology
+*** Performance Monitoring
+*** Debug Instructions
+*** Trace Instructions
+*** Timers
+*** Virtualization
+** Memory
+*** MMU
+*** Addressability
+*** Page Sizes
+*** EDAC
+** I/O
+*** IPL
+*** Interrupt Controllers
+*** MMIO
+*** IOMMU (and virt-iommu)
+*** Buses
+*** Serial Console
+*** Base Management Controller
+*** TPM?
+*** Debug Port (JTAG?)
+
+### Outlining What We Need: Monitor
+* Monitor (M-mode)
+** Trusted Execution Environment (another privilege level?)
+** CPU (services in UEFI terms)
+*** power on/off
+*** frequency management
+*** Does identification go here or in ISA?
+** Firmware update
+
+### Outlining What We Need: Boot Sequence
+* Booting the platform
+** Network boot
+** More console details?
+** Firmware update
+
+### Outlining What We Need: Kernel
+* Kernel (S-mode)
+** Firmware update
+* User Space (U-mode)
+** Firmware update
+
+### Outlining What We Need: Profiles
+* Defining a profile
+** Build a checklist: one from Column A, one from Column B ....
+** Determining compliance
+** RISC-V Certified?
+
+## More Discussion
+* What else?
+** Form factors like mini-iTX and so on?
+
+### Resources
+
+* Platform Spec: https://github.com/riscv/riscv-platform-specs
+* Mailing List: tech-unixplatformspec@lists.riscv.org
+* IRC: Freenode #riscv ?
+
