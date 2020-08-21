@@ -6,7 +6,7 @@ Linux Plumbers Conference, RISC-V Minifconference
 24 August 2020
 
 [%hardbreaks]
-(C) 2020, Al Stone <ahs3@redhat.com>
+Copyright (C) 2020, Al Stone <ahs3@redhat.com>
 
 This work is licensed under the Creative Commons Attribution 4.0
 International License (CC-BY 4.0).  The full license text is available at:
@@ -34,8 +34,6 @@ are some of my thoughts on what needs to be done:
 . A clear process
 . A clear -- and complete -- specification
 
-We'll even talk about some suggestions for getting these things done.
-
 ## Agenda
 * So what about the Vision Thing?
 * Getting things done
@@ -51,73 +49,42 @@ We'll even talk about some suggestions for getting these things done.
 *** Suggestion: make it an OS Platform Spec
 ** Second thought: what's the goal?
 *** Set expectations for OSs: processor, devices, and firmware
-* Operating System Platform Spec
+* Operating System Platform Spec (OSPS)
+** Clearly define terminology
 ** Clearly identify RISC-V ISA in use, and what to do when something
 is missing
-** Clearly define IO: required buses, required devices
+** Clearly define I/O: required buses, required devices, required behavior
 ** Detailed specification of the interface between OS and firmware
 *** and between OS and hardware _via_ firmware
 *** and so that virtualization is possible
+* Compliance
+** An OSPS-compliant QEMU implementation
+** A test suite
 
 ## Getting things done
+* Change the TG name?  Just Platform Spec TG?
 * We have github: https://github.com/riscv/riscv-platform-specs
+* We have member's portal: https://lists.riscv.org/g/tech-unixplatformspec
 * Current process is: discuss _ad infinitum_ on mailing list?
 * Let's make this simple:
 .. RFC on the mailing list
 .. On reasonable consensus, submit github merge request
 .. Commits must have SoB
-.. MR multiple approvals?  Voting?
-.. Who has final authority to merge?
-* Versioning?
+.. Each MR introduced, discussed in the working group
+.. Each MR approved/disapproved by poll in member's portal
+* Versioning
+.. YYYYMMDD
+.. Once a quarter/month/year?
 
 ## Filling in all the blanks
 ### What We Have
-What follows is the sum total of the content currently in the platform
-specification.
 
+* Appendix A is the sum total of the content currently in the platform
+specification.
 * Can you build an SBC, or a laptop, or a server to be used
 with a general purpose OS with this list of requirements?
 * Can you modify an operating system -- Linux or that other one -- that
 will reliably boot on any platform meeting these requirements?
-
-#### User-Level Platform
-
-* User-mode environments must implement at least version 2.2 of the RISC-V User
-  ISA specification, which can be found at
-  https://github.com/riscv/riscv-isa-manual/blob/master/release/riscv-spec-v2.2.pdf.  
-* User-mode programs may not execute the `fence.i` instruction.
-* User-mode environments may provide additional ISA extensions, but if those
-  extensions add user-visible state they must be initially disabled.
-* Within main-memory regions, aligned instruction fetch must be atomic, up to
-  the smaller of ILEN and XLEN bits.  In particular, if an aligned 4-byte word
-  is stored with the `sw` instruction, then any processor attempts to execute
-  that word, the processor either fetches the newly stored word, or some previous
-  value stored to that location.  (That is, the fetched instruction is not an
-  unpredictable value, nor is it a hybrid of the bytes of the old and new
-  values.)
-
-#### Supervisor-Level Platform
-
-* Supervisor-mode environments must implement at least version 0.2.0 of the
-  RISC-V SBI specification, which can be found at
-  https://github.com/riscv/riscv-sbi-doc/blob/v0.2.0/riscv-sbi.adoc
-* Supervisor-mode environments must implement the Sv39 page-based
-  virtual-memory scheme.   Systems that support Sv48 must support Sv39, systems
-  that support Sv57 must support Sv48, and so forth.
-* Unless otherwise specified by a given I/O device, I/O regions are at least
-  point-to-point strongly ordered.  All devices attached to a given PCIe root
-  complex are on the same ordered channel (numbered 2 or above), though
-  different root complexes might not be on the same ordering channel.
-* On RV64I-based Unix-class systems the negative virtual addresses are reserved
-  for the kernel.
-* External devices (DMA engines, the debug unit, non RISC-V cores, etc) that
-  are visible to RISC-V harts must appear as coherent agents, just like any
-  RISC-V hart would.  If additional ordering constraints are necessary for a
-  device to function, those will be provide by a device-specific mechanism.
-
-#### Portable UNIX Platform Profile
-
-* Supervisor-mode environments must implement RV64GC.
 
 ### What We Need
 #### Outlining What We Need
@@ -201,4 +168,45 @@ will reliably boot on any platform meeting these requirements?
 * Platform Spec: https://github.com/riscv/riscv-platform-specs
 * Mailing List: tech-unixplatformspec@lists.riscv.org
 * IRC: Freenode #riscv ?
+
+## Appendix A: What We Have
+
+### User-Level Platform
+
+* User-mode environments must implement at least version 2.2 of the RISC-V User
+  ISA specification, which can be found at
+  https://github.com/riscv/riscv-isa-manual/blob/master/release/riscv-spec-v2.2.pdf.  
+* User-mode programs may not execute the `fence.i` instruction.
+* User-mode environments may provide additional ISA extensions, but if those
+  extensions add user-visible state they must be initially disabled.
+* Within main-memory regions, aligned instruction fetch must be atomic, up to
+  the smaller of ILEN and XLEN bits.  In particular, if an aligned 4-byte word
+  is stored with the `sw` instruction, then any processor attempts to execute
+  that word, the processor either fetches the newly stored word, or some previous
+  value stored to that location.  (That is, the fetched instruction is not an
+  unpredictable value, nor is it a hybrid of the bytes of the old and new
+  values.)
+
+### Supervisor-Level Platform
+
+* Supervisor-mode environments must implement at least version 0.2.0 of the
+  RISC-V SBI specification, which can be found at
+  https://github.com/riscv/riscv-sbi-doc/blob/v0.2.0/riscv-sbi.adoc
+* Supervisor-mode environments must implement the Sv39 page-based
+  virtual-memory scheme.   Systems that support Sv48 must support Sv39, systems
+  that support Sv57 must support Sv48, and so forth.
+* Unless otherwise specified by a given I/O device, I/O regions are at least
+  point-to-point strongly ordered.  All devices attached to a given PCIe root
+  complex are on the same ordered channel (numbered 2 or above), though
+  different root complexes might not be on the same ordering channel.
+* On RV64I-based Unix-class systems the negative virtual addresses are reserved
+  for the kernel.
+* External devices (DMA engines, the debug unit, non RISC-V cores, etc) that
+  are visible to RISC-V harts must appear as coherent agents, just like any
+  RISC-V hart would.  If additional ordering constraints are necessary for a
+  device to function, those will be provide by a device-specific mechanism.
+
+### Portable UNIX Platform Profile
+
+* Supervisor-mode environments must implement RV64GC.
 
